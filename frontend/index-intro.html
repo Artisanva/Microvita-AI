@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>MICROVITA — Smart Food Scanner AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet" />
+  <style>
+    /* ── DESIGN TOKENS ── */
+    :root {
+      --brown-dark:   #3E1F0F;
+      --brown-mid:    #5C2E14;
+      --brown-light:  #7B4A2D;
+      --brown-xlight: #A0683F;
+      --cream:        #FFF8F0;
+      --cream-surface:#FFF0E0;
+      --cream-border: #E8D4C0;
+      --brown-text:   #2D1206;
+      --brown-muted:  #6B3F22;
+      --brown-faint:  #C4956A;
+      --accent:       #3E1F0F;
+      --accent-btn:   #3E1F0F;
+      --green:        #2D9446;
+      --green-bg:     rgba(45,148,70,.12);
+      --green-bd:     rgba(45,148,70,.3);
+      --red:          #C0392B;
+      --red-bg:       rgba(192,57,43,.1);
+      --red-bd:       rgba(192,57,43,.3);
+      --orange:       #D4670A;
+      --orange-bg:    rgba(212,103,10,.1);
+      --orange-bd:    rgba(212,103,10,.3);
+    }
+
+    /* ── RESET ── */
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; padding: 0; }
+    body {
+      background: var(--cream);
+      color: var(--brown-text);
+      font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+      min-height: 100dvh;
+      overflow-x: hidden;
+    }
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: var(--cream); }
+    ::-webkit-scrollbar-thumb { background: var(--brown-faint); border-radius: 8px; }
+
+    /* ── SCREENS ── */
+    .screen { display: none; min-height: 100dvh; flex-direction: column; }
+    .screen.active { display: flex; }
+
+    /* ── ANIMATIONS ── */
+    @keyframes fadeUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:none; } }
+    @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+    @keyframes spin   { to { transform:rotate(360deg); } }
+    .fade-in { animation: fadeIn .3s ease forwards; }
+    .fade-up { animation: fadeUp .35s ease forwards; }
+    .spin    { animation: spin .9s linear infinite; }
+
+    /* ── DARK SCREEN ── */
+    .screen-dark {
+      background: var(--brown-dark);
+      color: var(--cream);
+    }
+    .screen-dark .muted { color: rgba(255,248,240,.55); }
+
+    /* ══════════════════════════════
+       INTRO SCREEN
+    ══════════════════════════════ */
+    #screen-intro {
+      align-items: center;
+      justify-content: space-between;
+      padding: 64px 28px 48px;
+    }
+    #screen-intro .logo-wrap {
+      width: 96px; height: 96px;
+      background: #ffffff;
+      border-radius: 28px;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 24px;
+    }
+    #screen-intro h1 {
+      font-size: 2.6rem; font-weight: 800;
+      letter-spacing: -.01em; margin: 0 0 6px;
+      color: var(--cream);
+    }
+    #screen-intro .tagline {
+      font-size: .85rem; font-weight: 600;
+      color: rgba(255,248,240,.7); margin: 0 0 10px;
+    }
+    #screen-intro .desc {
+      font-size: .82rem; line-height: 1.65;
+      color: rgba(255,248,240,.5);
+      margin: 0 0 24px;
+    }
+    .feature-grid {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 8px; margin-bottom: 32px;
+    }
+    .feature-grid button {
+      padding: 11px 8px; border-radius: 14px;
+      font-size: .8rem; font-weight: 500; text-align: center;
+      background: rgba(255,248,240,.07);
+      border: 1px solid rgba(255,248,240,.12);
+      color: rgba(255,248,240,.85);
+      cursor: pointer; font-family: inherit;
+      transition: background .18s, transform .12s;
+    }
+    .feature-grid button:hover  { background: rgba(255,248,240,.15); }
+    .feature-grid button:active { transform: scale(.95); }
+    .btn-mulai {
+      width: 100%; padding: 15px 20px;
+      border-radius: 14px;
+      font-weight: 800; font-size: 15px;
+      background: var(--cream); color: var(--brown-dark);
+      border: none; cursor: pointer;
+      font-family: inherit;
+      transition: opacity .2s, transform .15s;
+    }
+    .btn-mulai:hover  { opacity: .9; }
+    .btn-mulai:active { transform: scale(.97); }
+
+    /* ══════════════════════════════
+       SCAN SCREEN
+    ══════════════════════════════ */
+    #screen-scan {
+      background: var(--cream);
+      padding: 0;
+      overflow-y: auto;
+    }
+    .scan-header {
+      padding: 48px 24px 16px;
+      display: flex; align-items: center; gap: 12px;
+    }
+    .back-btn {
+      width: 36px; height: 36px; border-radius: 12px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: #fff; border: 1px solid var(--cream-border);
+      cursor: pointer;
+    }
+    .scan-header h1 {
+      font-size: 1.5rem; font-weight: 800;
+      color: var(--brown-text); margin: 0;
+    }
+    .scan-body { padding: 0 24px 48px; display: flex; flex-direction: column; gap: 14px; }
+
+    /* file input */
+    .file-label {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 8px; padding: 28px 20px;
+      border: 2px dashed var(--cream-border);
+      border-radius: 18px; cursor: pointer;
+      background: #fff;
+      transition: border-color .2s, background .2s;
+      font-family: inherit;
+    }
+    .file-label:hover { border-color: var(--brown-dark); background: rgba(62,31,15,.02); }
+    .file-label span { font-size: .82rem; color: var(--brown-faint); font-weight: 500; }
+    #fileInput { display: none; }
+
+    #preview {
+      width: 100%; border-radius: 16px;
+      display: none;
+      object-fit: cover; max-height: 280px;
+      border: 1px solid var(--cream-border);
+    }
+
+    .btn-scan {
+      width: 100%; padding: 15px 20px;
+      border-radius: 14px;
+      font-weight: 800; font-size: 15px;
+      background: var(--brown-dark); color: var(--cream);
+      border: none; cursor: pointer;
+      font-family: inherit;
+      transition: opacity .2s, transform .15px;
+    }
+    .btn-scan:hover  { opacity: .88; }
+    .btn-scan:active { transform: scale(.97); }
+    .btn-scan:disabled { opacity: .45; cursor: not-allowed; }
+
+    #result {
+      background: #fff;
+      border: 1px solid var(--cream-border);
+      border-radius: 18px; padding: 20px;
+      display: none;
+    }
+    #result h2 { margin: 0 0 6px; font-size: 1.15rem; color: var(--brown-text); }
+    #r-deskripsi { margin: 0 0 12px; font-size: .85rem; color: var(--brown-muted); line-height: 1.6; }
+    #r-alasan { margin: 10px 0 0; font-size: .82rem; color: var(--brown-muted); line-height: 1.6; }
+
+    .badge {
+      display: inline-block;
+      padding: 4px 12px; border-radius: 99px;
+      font-size: .78rem; font-weight: 700; color: white;
+    }
+    .sehat  { background: var(--green); }
+    .cukup  { background: var(--orange); }
+    .tidak  { background: var(--red); }
+
+    .grid-nutrisi {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 8px; margin-top: 14px;
+    }
+    .item-nutrisi {
+      background: var(--cream-surface);
+      border: 1px solid var(--cream-border);
+      padding: 10px 12px; border-radius: 12px;
+      font-size: .82rem;
+    }
+    .item-nutrisi b { display: block; margin-bottom: 2px; color: var(--brown-muted); font-size: .72rem; text-transform: uppercase; letter-spacing: .05em; }
+    .item-nutrisi span { font-weight: 700; color: var(--brown-text); }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════
+     SCREEN 1 — INTRO  (dark brown)
+══════════════════════════════════════════ -->
+<div id="screen-intro" class="screen screen-dark fade-in active">
+  <div></div><!-- spacer top -->
+  <div style="text-align:center;width:100%">
+    <div class="logo-wrap">
+      <svg width="64" height="64" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="50" cy="48" r="36" stroke="#3D2010" stroke-width="3.5" fill="none"/>
+        <path d="M50 14 C50 14 36 26 36 37 C36 45.8 42.3 53 50 53 C57.7 53 64 45.8 64 37 C64 26 50 14 50 14Z" fill="#3D2010"/>
+        <line x1="38" y1="35" x2="62" y2="35" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round"/>
+        <circle cx="50" cy="40" r="3.5" fill="none" stroke="#ffffff" stroke-width="2"/>
+        <line x1="38" y1="45" x2="62" y2="45" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round"/>
+        <polyline points="36,53 26,62 36,66 26,76" fill="none" stroke="#3D2010" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+        <polyline points="64,53 74,62 64,66 74,76" fill="none" stroke="#3D2010" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+        <polygon points="44,53 56,53 50,64" fill="#3D2010"/>
+      </svg>
+    </div>
+    <h1>MICROVITA</h1>
+    <p class="tagline">Smart Food Scanner AI</p>
+    <p class="desc">Platform AI untuk cek nutrisi &amp; keamanan makanan.<br>Scan, cek expired, analisa label &amp; rekomendasi gizi.</p>
+    <div class="feature-grid">
+      <button onclick="gotoScan()">📷 Scan Makanan</button>
+      <button onclick="window.location.href='scan-expired.html'">⏳ Cek Expired</button>
+      <button onclick="window.location.href='scan-nota.html'">🏷️ Scan Label/Nota</button>
+      <button onclick="alert('Fitur segera hadir!')">🥗 Rekomendasi Gizi</button>
+    </div>
+  </div>
+  <div style="width:100%">
+    <button class="btn-mulai" onclick="gotoScan()">Mulai Scan →</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     SCREEN 2 — SCAN MAKANAN
+══════════════════════════════════════════ -->
+<div id="screen-scan" class="screen">
+  <div class="scan-header">
+    <button class="back-btn" onclick="gotoIntro()">
+      <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" style="color:var(--brown-text)">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
+      </svg>
+    </button>
+    <h1>Scan Makanan</h1>
+  </div>
+
+  <div class="scan-body">
+    <label class="file-label" for="fileInput">
+      <svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" style="color:var(--brown-faint)">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4-4 4 4 4-6 4 6"/>
+        <rect x="3" y="3" width="18" height="18" rx="3"/>
+      </svg>
+      <span>Pilih atau ambil foto makanan</span>
+    </label>
+    <input type="file" id="fileInput" accept="image/*">
+
+    <img id="preview" alt="Preview makanan">
+
+    <button id="btn-scan" class="btn-scan" onclick="scan()">Scan Sekarang</button>
+
+    <div id="result">
+      <h2 id="r-nama"></h2>
+      <p id="r-deskripsi"></p>
+      <span id="r-status" class="badge"></span>
+      <p id="r-alasan"></p>
+      <div class="grid-nutrisi">
+        <div class="item-nutrisi"><b>Kalori</b><span id="r-kalori"></span></div>
+        <div class="item-nutrisi"><b>Protein</b><span id="r-protein"></span></div>
+        <div class="item-nutrisi"><b>Lemak</b><span id="r-lemak"></span></div>
+        <div class="item-nutrisi"><b>Karbohidrat</b><span id="r-karbo"></span></div>
+        <div class="item-nutrisi"><b>Gula</b><span id="r-gula"></span></div>
+        <div class="item-nutrisi"><b>Garam</b><span id="r-garam"></span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ── NAVIGATION ── */
+function gotoScan() {
+  document.getElementById('screen-intro').classList.remove('active');
+  document.getElementById('screen-scan').classList.add('active');
+}
+function gotoIntro() {
+  document.getElementById('screen-scan').classList.remove('active');
+  document.getElementById('screen-intro').classList.add('active');
+}
+
+/* ── SCAN LOGIC ── */
+const API_URL = "http://localhost:3000/api/scan";
+
+let base64Data = "";
+let mimeType   = "";
+
+document.getElementById('fileInput').addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  mimeType = file.type;
+  const reader = new FileReader();
+  reader.onload = function() {
+    base64Data = reader.result.split(',')[1];
+    const preview = document.getElementById('preview');
+    preview.src = reader.result;
+    preview.style.display = 'block';
+  };
+  reader.readAsDataURL(file);
+});
+
+async function scan() {
+  if (!base64Data) return alert("Pilih foto dulu!");
+  const btn = document.getElementById('btn-scan');
+  btn.innerText = "Lagi scan...";
+  btn.disabled  = true;
+
+  try {
+    const res  = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image: base64Data, mimeType })
+    });
+    const data = await res.json();
+
+    document.getElementById('result').style.display = 'block';
+    document.getElementById('r-nama').innerText      = data.nama            || "-";
+    document.getElementById('r-deskripsi').innerText = data.deskripsi        || "-";
+    document.getElementById('r-kalori').innerText    = data.estimasi_kalori  || "-";
+    document.getElementById('r-protein').innerText   = data.protein          || "-";
+    document.getElementById('r-lemak').innerText     = data.lemak            || "-";
+    document.getElementById('r-karbo').innerText     = data.karbohidrat      || "-";
+    document.getElementById('r-gula').innerText      = data.gula             || "-";
+    document.getElementById('r-garam').innerText     = data.garam            || "-";
+
+    const statusEl = document.getElementById('r-status');
+    const alasanEl = document.getElementById('r-alasan');
+    statusEl.innerText = data.status_kesehatan || "-";
+    statusEl.className = 'badge ' + (
+      data.status_kesehatan === 'Sehat'       ? 'sehat' :
+      data.status_kesehatan === 'Cukup Sehat' ? 'cukup' : 'tidak'
+    );
+    alasanEl.innerText = data.status_kesehatan === 'Tidak Sehat'
+      ? data.alasan_tidak_sehat
+      : data.alasan_sehat;
+  } catch (err) {
+    alert("Gagal scan: " + err.message);
+  } finally {
+    btn.innerText = "Scan Sekarang";
+    btn.disabled  = false;
+  }
+}
+</script>
+</body>
+</html>
