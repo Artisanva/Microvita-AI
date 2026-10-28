@@ -779,6 +779,8 @@
   <div id="market-list" class="flex-1 px-5 scroll-y pb-4 grid grid-cols-2 gap-3 content-start"></div>
 </div>
 
+<div id="paypal-button-container" style="width:100%; margin-top:16px; margin-bottom:120px; padding: 0 20px; box-sizing: border-box;"></div>
+
 <!-- ══════════════════════════════════════════════════════════
      SCREEN 12 — RIWAYAT & POIN  (cream)
 ══════════════════════════════════════════════════════════ -->
@@ -1675,25 +1677,35 @@ window.addEventListener('DOMContentLoaded',()=>{
   document.getElementById('home-points').textContent=APP.points;
 });
 </script>
-<div id="paypal-button-container" style="max-width: 300px; margin: 20px auto;"></div>
+<div id="paypal-button-container" style="max-width:300px; margin:20px auto; padding-bottom:100px;"></div>
+<script src="https://www.paypal.com/sdk/js?client-id=BAATomMP96PDmQgv7cg9DK09MhYVjtqMPWHsJ4DqPSj5uvqxZ1ZHHc5kNtWABgQp3BBOE3jRa6G27UQwqc&currency=USD"></script>
 <script>
-  const API_BASE = 'http://localhost:3000'; // nanti kita ganti jadi link Render
+(function(){
+  const el = document.getElementById('paypal-button-container');
+  if(!el) return;
+  el.innerHTML = '';
   paypal.Buttons({
-    creatfeOrder: async () => {
-      const res = await fetch(`${API_BASE}/api/paypal/create-order`, {
-      const data = await res.json();
-      return data.id;
-    },
-    onApprove: async (data) => {
-      const res = await fetch(`${API_BASE}/api/paypal/capture-order`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orderID: data.orderID })
+    style: { layout: 'vertical', color: 'blue', shape: 'rect', label: 'buynow', height: 48 },
+    createOrder: (data, actions) => {
+      return actions.order.create({
+        purchase_units: [{
+          description: "Microvita Premium Kit",
+          amount: { value: "2.99" }
+        }]
       });
-      const details = await res.json();
-      alert('Pembayaran berhasil oleh ' + details.payer.name.given_name);
+    },
+    onApprove: async (data, actions) => {
+      const order = await actions.order.capture();
+      alert(`✅ PEMBAYARAN BERHASIL!\n\nNama: ${order.payer.name.given_name}\nEmail Sandbox: ${order.payer.email_address}\nOrder ID: ${order.id}\n\nIni bukti Gmail Sandbox dipake buat bayar!`);
+      localStorage.setItem('paypal_last_order', JSON.stringify(order));
+      console.log("PAYPAL SUCCESS:", order);
+    },
+    onError: (err) => {
+      console.error(err);
+      alert("PayPal Error, cek console (F12)");
     }
   }).render('#paypal-button-container');
+})();
 </script>
 </body>
 </html>
