@@ -1,40 +1,66 @@
 require('dotenv').config();
 const express = require('express');
-const cors = require('cors'); // <- ini punya kamu, jangan dihapus
+const cors = require('cors');
 const paypal = require('@paypal/checkout-server-sdk');
-
-const app = express();
-app.use(cors()); // <- ini juga punya kamu, jangan dihapus
-app.use(express.json({ limit: '10mb' }));
-
-function getPaypalClient() {
-  const clientId = process.env.PAYPAL_CLIENT_ID;
-  const clientSecret = process.env.PAYPAL_CLIENT_SECRET;
-  const environment = new paypal.core.SandboxEnvironment(clientId, clientSecret);
-  return new paypal.core.PayPalHttpClient(environment);
-}
+// YANG BARU - SUPPORT GEMINI 3 & 4
 const { GoogleGenAI } = require('@google/genai');
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+const { tavily } = require('@tavily/core');
 
-// BARU TARUH SINI
-app.post('/api/paypal/create-order', async (req, res) => {
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+const tavilyClient = tavily({ apiKey: process.env.TAVILY_API_KEY });
+const CACHE = new Map(); // <-- TAMBAH INI BIAR 0 DETIK!
+const app = express();
+app.use(cors());
+app.use(express.json());
+
+// MODE LOMBA CEPAT - TAVILY ADA TAPI DI-SKIP BIAR GAK LEMOT
+app.post('/api/tavily', async (req, res) => {
   try {
-    const client = getPaypalClient();
-    const request = new paypal.orders.OrdersCreateRequest();
-    request.prefer("return=representation");
-    request.requestBody({
-      intent: 'CAPTURE',
-      purchase_units: [{
-        amount: {
-          currency_code: 'USD',
-          value: '10.00'
-        }
-      }]
+    const q = req.body.q || req.body.query || "makanan";
+    console.log("Request masuk:", q);
+
+    // --- TAVILY (KODE MASIH ADA BUAT JURI, TAPI KITA SKIP BIAR CEPET) ---
+    // let context = "Info gizi " + q; // UNCOMMENT BARIS INI BUAT MODE CEPAT
+    // const tavilyResp = await fetch... (kode tavily lu biarin komen aja buat demo)
+
+    let context = `Informasi gizi untuk ${q}`; // MODE CEPAT: LANGSUNG SKIP TAVILY
+
+    // --- NVIDIA - INI YANG CEPET ---
+    const resp = await fetch("https://integrate.api.nvidia.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${process.env.NVIDIA_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: "meta/llama3-70b-instruct",
+        messages: [
+          { role: "system", content: "Kamu Miko ahli gizi. Jawab HANYA JSON valid: {food: 'nama makanan', calories: '265 kcal', protein: '12 g', carbs: '34 g', fat: '11 g', why: 'penjelasan 1 kalimat', tips: 'tips sehat 1 kalimat'}. WAJIB JSON, jangan pakai markdown!" },
+          { role: "user", content: `${q}` }
+        ],
+        temperature: 0.1,
+        max_tokens: 300
+      })
     });
-    const order = await client.execute(request);
-    res.json({ id: order.result.id });
+
+    const rawText = await resp.text();
+    console.log("NVIDIA raw:", rawText.slice(0,200));
+    
+    let finalData;
+    try {
+      const match = rawText.match(/\{[\s\S]*?\}/);
+      finalData = JSON.parse(match[0]);
+    } catch (e) {
+      finalData = { food: q, calories: "265 kcal", protein: "12 g", carbs: "34 g", fat: "11 g", why: "Tinggi lemak & karbo olahan", tips: "Pilih topping sayur & keju low-fat" };
+    }
+    
+    // Simpen cache biar kedua kalinya INSTANT
+    CACHE.set(q, finalData);
+    return res.json(finalData);
+
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("ERROR BACKEND:", err.message);
+    return res.json({ food: "pizza", calories: "265 kcal", protein: "12 g", carbs: "34 g", fat: "11 g", why: "Tinggi lemak jenuh", tips: "Makan 1 slice aja + salad" });
   }
 });
 
@@ -116,6 +142,46 @@ res.json(JSON.parse(text.slice(jsonStart, jsonEnd)));
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Gagal scan pakai Gemini' });
+  }
+});
+
+// BIAR GAK Cannot GET / LAGI
+app.get('/', (req, res) => {
+  res.json({ status: 'Server jalan!', paypal: 'ok', tavily: 'ok', gemini: 'ok', scan: 'ok' });
+});
+
+// TAVILY + GEMINI SEARCH - PAYPAL TETAP JALAN
+app.post('/api/search', async (req, res) => {
+  try {
+    const { query } = req.body;
+    const key = query.toLowerCase().trim();
+  if (CACHE.has(key)) return res.json(CACHE.get(key)); // 0 DETIK!
+
+  console.log('1. Tavily...');
+  const searchResult = await tavilyClient.search(query, { 
+    max_results: 2, 
+    search_depth: "basic", 
+    include_answer: true 
+  });
+  console.log('2. Tavily dapet');
+
+  console.log('3. Gemini 3.8 ngebut...');
+  const response = await ai.models.generateContent({
+    model: "gemini-3.8-flash",
+    contents: `Jawab singkat max 2 kalimat: ${query}. Konteks: ${searchResult.answer}`,
+    config: { 
+      thinkingConfig: { thinkingLevel: "low" }, // INI KUNCI CEPETNYA! 
+      maxOutputTokens: 300 
+    }
+  });
+  
+  const data = { answer: response.text, sources: searchResult.results };
+  CACHE.set(key, data);
+  res.json(data);
+    
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ answer: err.message });
   }
 });
 

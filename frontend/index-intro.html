@@ -214,7 +214,58 @@
   </style>
 </head>
 <body>
+<!-- === FITUR SEARCH TAVILY + GEMINI === -->
+<div style="max-width:600px;margin:20px auto;padding:20px;border:2px solid #00d084;border-radius:12px;background:#f9fff9;">
+  <h3 style="margin-top:0;">🔍 Tanya AI Microvita (Tavily + Gemini)</h3>
+  <div style="display:flex;gap:10px;">
+    <input id="searchQuery" type="text" placeholder="Contoh: cara ternak ayam petelur biar untung?" style="flex:1;padding:12px;border-radius:8px;border:1px solid #ccc;">
+    <button onclick="doSearch()" style="padding:12px 20px;border-radius:8px;background:#00d084;color:white;border:none;cursor:pointer;font-weight:bold;">Cari</button>
+  </div>
+  <div id="searchResult" style="margin-top:15px;white-space:pre-wrap;background:white;padding:15px;border-radius:8px;min-height:50px;">Hasil akan muncul di sini...</div>
+  <div id="searchSources" style="margin-top:10px;font-size:12px;color:#666;"></div>
+</div>
 
+<script>
+async function doSearch() {
+  const query = document.getElementById('searchQuery').value;
+  const resultDiv = document.getElementById('searchResult');
+  const sourcesDiv = document.getElementById('searchSources');
+  
+  if (!query) return alert('Isi dulu pertanyaannya Bob!');
+  
+  resultDiv.innerHTML = '⏳ Lagi nyari di internet pake Tavily + Gemini...';
+  sourcesDiv.innerHTML = '';
+  
+  try {
+    const res = await fetch('http://localhost:3000/api/search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: query })
+    });
+    
+    const data = await res.json();
+    
+    if (data.error) throw new Error(data.error);
+    
+    resultDiv.innerHTML = data.answer;
+    
+    // Tampilin sumber
+    if (data.sources && data.sources.length > 0) {
+      sourcesDiv.innerHTML = '<b>Sumber:</b><br>' + data.sources.map(s => `• <a href="${s.url}" target="_blank">${s.title}</a>`).join('<br>');
+    }
+    
+  } catch (err) {
+    resultDiv.innerHTML = '❌ Error: ' + err.message + '<br>Pastikan backend node index.js masih jalan!';
+    console.error(err);
+  }
+}
+
+// Biar bisa enter
+document.getElementById('searchQuery')?.addEventListener('keypress', (e) => {
+  if (e.key === 'Enter') doSearch();
+});
+</script>
+<!-- === END FITUR SEARCH === -->
 <!-- ══════════════════════════════════════════
      SCREEN 1 — INTRO  (dark brown)
 ══════════════════════════════════════════ -->

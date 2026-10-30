@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<body style="font-family:sans-serif;padding:20px">
+<h2>TEST TAVILY + GEMINI 2.0</h2>
+<input id="q" placeholder="tanya makanan..." style="width:70%;padding:10px" value="apakah pop mie sehat?">
+<button onclick="cari()" style="padding:10px">Cari</button>
+<pre id="hasil" style="white-space:pre-wrap;background:#f4f4f4;padding:15px;margin-top:20px"></pre>
+<script>
+async function cari(){
+  const query = document.getElementById('q').value;
+  document.getElementById('hasil').textContent = 'Loading...';
+  const res = await fetch('http://localhost:3000/api/search', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({query})
+  });
+  const data = await res.json();
+  document.getElementById('hasil').textContent = JSON.stringify(data, null, 2);
+}
+</script>
+</body>
+</html>

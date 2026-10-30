@@ -2,14 +2,14 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>MICROVITA — Smart Food Scanner AI</title>
-  <meta name="description" content="Platform AI untuk cek nutrisi & keamanan makanan. Scan, cek expired, analisa label & rekomendasi gizi." />
+  <meta name="description" content="Platform AI untuk cek nutrisi & keamanan makanan" />
+  <script src="https://www.paypal.com/sdk/js?client-id=sb&currency=USD"></script>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://www.paypal.com/sdk/js?client-id=BAATomMP96PDmQgv7cg9DK09MhYVjtqMPWHsJ4DqPSj5uvqxZ1ZHHc5kNtWABgQp3BBOE3jRa6G27UQwqc&currency=USD"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet" />
   <style>
     /* ── DESIGN TOKENS ── */
     :root {
@@ -542,6 +542,18 @@
       <p class="text-xs mt-0.5" style="color:var(--brown-muted)">Analisis nutrisi & keamanan</p>
     </div>
   </div>
+<!-- LANGKAH 3: TAVILY + LOGO T + MIKO INPUT -->
+<div class="px-5 pb-3">
+  <div class="flex gap-2 items-center">
+    <div class="relative flex-1">
+      <span class="absolute left-3 top-1/2 -translate-y-1/2 bg-black text-white w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold">T</span>
+      <input id="tavily-input" class="w-full border border-gray-300 rounded-full pl-11 pr-4 py-2.5 text-sm outline-none focus:border-black" placeholder="Tanya Miko... ayam geprek gizinya berapa?">
+    </div>
+    <button onclick="tanyaTavily()" class="bg-[#3a2d4a] text-white rounded-full px-5 py-2.5 text-sm font-medium">Cari</button>
+    <button onclick="startVoice()" class="bg-white border rounded-full px-3 py-2.5 text-sm">🎤</button>
+  </div>
+ <div id="tavily-jawaban" class="hidden" style="margin-top:12px"></div>
+</div>
   <div class="flex-1 px-5 scroll-y pb-4">
     <div class="toggle-wrap mb-4">
       <div class="toggle-btn active" id="sm-toggle-upload" onclick="smToggle('upload')">📁 Upload Foto</div>
@@ -975,6 +987,17 @@
 const API_BASE = 'https://microvita-ai.vercel.app';
 const SCAN_URL = API_BASE + '/api/scan';
 const MAX_IMG_BYTES = 10 * 1024 * 1024;
+
+// --- TAVILY KECIL - T NYA 5x5 ---
+async function tanyaTavily(){
+  const q=document.getElementById('tavily-input').value; if(!q) return;
+  const box=document.getElementById('tavily-jawaban');
+  box.classList.remove('hidden'); box.innerHTML='⌛ Miko lagi ngintip web...';
+  const res=await fetch("http://127.0.0.1:3000/api/tavily",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({query:q})});
+  const data=await res.json(); console.log(data); box.innerHTML=`<b>Miko:</b> ${data.answer || data.result || data.reply || data.output || JSON.stringify(data)}`;
+}
+const startVoice=()=>{const r=new(window.SpeechRecognition||window.webkitSpeechRecognition)();r.lang='id-ID';r.onresult=e=>{document.getElementById('tavily-input').value=e.results[0][0].transcript;tanyaTavily()};r.start()}
+const tanyaTavilyCamera=()=>document.getElementById('camera-input-tavily')?.click();
 
 // ─── STATE ────────────────────────────────────────────
 const APP = {
@@ -1677,35 +1700,61 @@ window.addEventListener('DOMContentLoaded',()=>{
   document.getElementById('home-points').textContent=APP.points;
 });
 </script>
-<div id="paypal-button-container" style="max-width:300px; margin:20px auto; padding-bottom:100px;"></div>
-<script src="https://www.paypal.com/sdk/js?client-id=BAATomMP96PDmQgv7cg9DK09MhYVjtqMPWHsJ4DqPSj5uvqxZ1ZHHc5kNtWABgQp3BBOE3jRa6G27UQwqc&currency=USD"></script>
+
 <script>
-(function(){
+window.addEventListener('load', () => {
   const el = document.getElementById('paypal-button-container');
-  if(!el) return;
+  if (!el) { console.log('div paypal gak ketemu'); return; }
+  if (typeof paypal === 'undefined') { console.log('SDK paypal belum load'); return; }
+  
   el.innerHTML = '';
   paypal.Buttons({
-    style: { layout: 'vertical', color: 'blue', shape: 'rect', label: 'buynow', height: 48 },
+    style: { layout: 'vertical', color: 'blue', shape: 'rect', label: 'pay' },
     createOrder: (data, actions) => {
       return actions.order.create({
-        purchase_units: [{
-          description: "Microvita Premium Kit",
-          amount: { value: "2.99" }
-        }]
+        purchase_units: [{ description: "Microvita Premium Kit", amount: { value: "2.99" } }]
       });
     },
     onApprove: async (data, actions) => {
       const order = await actions.order.capture();
-      alert(`✅ PEMBAYARAN BERHASIL!\n\nNama: ${order.payer.name.given_name}\nEmail Sandbox: ${order.payer.email_address}\nOrder ID: ${order.id}\n\nIni bukti Gmail Sandbox dipake buat bayar!`);
-      localStorage.setItem('paypal_last_order', JSON.stringify(order));
-      console.log("PAYPAL SUCCESS:", order);
-    },
-    onError: (err) => {
-      console.error(err);
-      alert("PayPal Error, cek console (F12)");
+      alert('Bayar sukses! ' + order.payer.name.given_name);
     }
-  }).render('#paypal-button-container');
-})();
+  }).render('#paypal-button-container').then(() => {
+    console.log('PayPal rendered!');
+  });
+});
+  window.addEventListener('load', () => {
+    const el = document.getElementById('paypal-button-container');
+    if (!el) return;
+    el.innerHTML = '';
+    paypal.Buttons({
+      style: {
+        layout: 'vertical',
+        color: 'blue',
+        shape: 'rect',
+        label: 'buynow',
+        height: 45
+      },
+      createOrder: function(data, actions) {
+        return actions.order.create({
+          purchase_units: [{ 
+            amount: { value: '2.99' },
+            description: 'MICROVITA Premium Kit'
+          }]
+        });
+      },
+      onApprove: function(data, actions) {
+        return actions.order.capture().then(function(details) {
+          alert('Pembayaran sukses! Terima kasih ' + details.payer.name.given_name);
+          // tambahin poin / close modal di sini
+          console.log(details);
+        });
+      }
+    }).render('#paypal-button-container').then(() => {
+      console.log('PayPal biru rendered');
+    });
+  });
 </script>
+<script src="./miko-tavily.js"></script>
 </body>
 </html>
