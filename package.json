@@ -1,6 +1,0 @@
-{
-  "dependencies": {
-    "@google/genai": "^2.32.0",
-    "@tavily/core": "^0.7.14"
-  }
-}
